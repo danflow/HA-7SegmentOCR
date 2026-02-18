@@ -20,6 +20,7 @@ CONF_MIN_AREA = "min_area"
 CONF_FORCE_INVERT = "force_invert"
 
 CONF_ALLOW_DECREASE = "allow_decrease"
+
 CONF_OUTPUT_TYPE = "output_type"
 
 DEFAULT_OUTPUT_TYPE = "string"  # string | int | float
