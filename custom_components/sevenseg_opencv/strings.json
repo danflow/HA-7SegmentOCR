@@ -4,37 +4,25 @@
     "step": {
       "user": {
         "title": "Seven Segment OCR",
-        "description": "Wähle die Kamera und gib Crop/Vorverarbeitung-Parameter an.",
+        "description": "Füge optional ein JSON-Preset ein (aus der WebUI).",
         "data": {
-          "camera_entity": "Kamera",
-          "scan_interval": "Update Intervall (Sekunden)",
+          "camera_entity": "Kamera Entity (z.B. camera.watermeter)",
+          "scan_interval": "Intervall (Sekunden)",
           "expected_digits": "Erwartete Ziffern",
+          "preset_json": "JSON-Preset (optional)",
           "crop_x": "Crop X",
           "crop_y": "Crop Y",
-          "crop_w": "Crop Breite (0 = bis Rand)",
-          "crop_h": "Crop Höhe (0 = bis Rand)",
-          "rotate": "Rotation",
+          "crop_w": "Crop W",
+          "crop_h": "Crop H",
+          "rotate": "Rotate",
           "autocontrast": "Autokontrast",
-          "blur": "Blur (Sigma)",
-          "block_size": "Adaptive Block Size (odd)",
-          "c": "C (Offset)",
-          "border_clear": "Border Clear (px)",
-          "min_area": "Min Area (Despeckle)",
-          "force_invert": "Force Invert",
-          "preset_json": "JSON-Preset (optional)"
+          "blur": "Blur",
+          "block_size": "Block Size",
+          "c": "C",
+          "border_clear": "Border Clear",
+          "min_area": "Min Area",
+          "force_invert": "Force Invert"
         }
-      },
-      "crop": {
-        "title": "Crop",
-        "description": "Crop-Werte in Pixeln auf dem Originalbild. Breite/Höhe = 0 bedeutet „bis zum Rand“."
-      },
-      "preprocess": {
-        "title": "Vorverarbeitung",
-        "description": "Vorverarbeitung: Diese Werte bestimmen die Binarisierung/Noise-Entfernung."
-      },
-      "import": {
-        "title": "Preset (optional)",
-        "description": "Optional: JSON-Preset einfügen (z.B. aus deiner Web-UI)."
       }
     }
   }
