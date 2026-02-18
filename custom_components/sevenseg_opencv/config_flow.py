@@ -94,9 +94,7 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="crop",
             data_schema=schema,
-            description_placeholders={},
-            description="Crop-Werte in Pixeln auf dem Originalbild. Breite/Höhe = 0 bedeutet „bis zum Rand“."
-        )
+            description_placeholders={})
 
     async def async_step_preprocess(self, user_input=None):
         if user_input is not None:
@@ -114,9 +112,7 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         })
         return self.async_show_form(
             step_id="preprocess",
-            data_schema=schema,
-            description="Vorverarbeitung: Diese Werte bestimmen die Binarisierung/Noise-Entfernung."
-        )
+            data_schema=schema)
 
     async def async_step_import(self, user_input=None):
         if user_input is not None:
@@ -138,12 +134,7 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         })
         return self.async_show_form(
             step_id="import",
-            data_schema=schema,
-            description=(
-                "Optional: JSON-Preset einfügen (z.B. aus deiner Web-UI).\n"
-                "Keys: crop_x, crop_y, crop_w, crop_h, rotate, block_size, c, border_clear, min_area, blur, autocontrast."
-            ),
-        )
+            data_schema=schema)
 
     @staticmethod
     def async_get_options_flow(config_entry):
@@ -184,4 +175,4 @@ class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
 
             vol.Optional(CONF_PRESET_JSON): _text(multiline=True),
         })
-        return self.async_show_form(step_id="init", data_schema=schema, description="Werte bequem anpassen. Optional JSON-Preset einfügen.")
+        return self.async_show_form(step_id="init", data_schema=schema)
