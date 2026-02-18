@@ -1,0 +1,30 @@
+{
+  "title": "Seven Segment OCR (OpenCV)",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Seven Segment OCR (OpenCV)",
+        "description": "W\u00e4hle die Kamera und gib Crop/Preprocessing-Parameter an.",
+        "data": {
+          "camera_entity": "Kamera",
+          "scan_interval": "Update Intervall (Sekunden)",
+          "expected_digits": "Erwartete Ziffern",
+          "crop_x": "Crop X",
+          "crop_y": "Crop Y",
+          "crop_w": "Crop Breite (0 = bis Rand)",
+          "crop_h": "Crop H\u00f6he (0 = bis Rand)",
+          "rotate": "Rotation",
+          "clahe_clip": "CLAHE ClipLimit",
+          "clahe_tile": "CLAHE Tile",
+          "blur": "Blur Kernel",
+          "adapt_method": "Adaptive Method",
+          "block_size": "Block Size",
+          "c": "C (Offset)",
+          "border_clear": "Border Clear (px)",
+          "min_area": "Min Area (Despeckle)",
+          "force_invert": "Force Invert"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Seven Segment OCR (OpenCV)",
+        "description": "W\u00e4hle die Kamera und gib Crop/Preprocessing-Parameter an."
+      }
+    }
+  }
+}
