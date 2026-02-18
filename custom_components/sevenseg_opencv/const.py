@@ -11,11 +11,8 @@ CONF_ROTATE = "rotate"
 CONF_EXPECTED_DIGITS = "expected_digits"
 CONF_SCAN_INTERVAL = "scan_interval"
 
-# Preprocess
-CONF_CLAHE_CLIP = "clahe_clip"
-CONF_CLAHE_TILE = "clahe_tile"
+CONF_AUTOCONTRAST = "autocontrast"
 CONF_BLUR = "blur"
-CONF_ADAPT_METHOD = "adapt_method"
 CONF_BLOCK_SIZE = "block_size"
 CONF_C = "c"
 CONF_BORDER_CLEAR = "border_clear"

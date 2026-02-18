@@ -1,10 +1,10 @@
 {
-  "title": "Seven Segment OCR (OpenCV)",
+  "title": "Seven Segment OCR (Pure Python)",
   "config": {
     "step": {
       "user": {
-        "title": "Seven Segment OCR (OpenCV)",
-        "description": "W\u00e4hle die Kamera und gib Crop/Preprocessing-Parameter an.",
+        "title": "Seven Segment OCR (Pure Python)",
+        "description": "W\u00e4hle die Kamera und gib Crop/Vorverarbeitung-Parameter an.",
         "data": {
           "camera_entity": "Kamera",
           "scan_interval": "Update Intervall (Sekunden)",
@@ -14,11 +14,9 @@
           "crop_w": "Crop Breite (0 = bis Rand)",
           "crop_h": "Crop H\u00f6he (0 = bis Rand)",
           "rotate": "Rotation",
-          "clahe_clip": "CLAHE ClipLimit",
-          "clahe_tile": "CLAHE Tile",
-          "blur": "Blur Kernel",
-          "adapt_method": "Adaptive Method",
-          "block_size": "Block Size",
+          "autocontrast": "Autokontrast",
+          "blur": "Blur (Sigma)",
+          "block_size": "Adaptive Block Size (odd)",
           "c": "C (Offset)",
           "border_clear": "Border Clear (px)",
           "min_area": "Min Area (Despeckle)",

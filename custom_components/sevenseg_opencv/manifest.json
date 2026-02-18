@@ -1,14 +1,12 @@
 {
   "domain": "sevenseg_opencv",
-  "name": "Seven Segment OCR (OpenCV)",
+  "name": "Seven Segment OCR (Pure Python)",
   "documentation": "https://github.com/yourname/sevenseg_opencv_hacs",
   "issue_tracker": "https://github.com/yourname/sevenseg_opencv_hacs/issues",
   "codeowners": [
     "@yourgithub"
   ],
-  "version": "0.1.1",
+  "version": "0.2.0",
   "config_flow": true,
-  "requirements": [
-    "opencv-python-headless>=4.8.0.0"
-  ]
+  "requirements": []
 }

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
-from dataclasses import dataclass
+from typing import Optional, Tuple, List, Dict, Any, Deque
+from collections import deque
+from io import BytesIO
 
 import numpy as np
-import cv2
+from PIL import Image, ImageOps, ImageFilter
 
 from homeassistant.components.camera import async_get_image
 from homeassistant.config_entries import ConfigEntry
@@ -19,15 +21,13 @@ from .const import (
     CONF_CAMERA, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL,
     CONF_CROP_X, CONF_CROP_Y, CONF_CROP_W, CONF_CROP_H, CONF_ROTATE,
     CONF_EXPECTED_DIGITS,
-    CONF_CLAHE_CLIP, CONF_CLAHE_TILE, CONF_BLUR,
-    CONF_ADAPT_METHOD, CONF_BLOCK_SIZE, CONF_C,
+    CONF_AUTOCONTRAST, CONF_BLUR, CONF_BLOCK_SIZE, CONF_C,
     CONF_BORDER_CLEAR, CONF_MIN_AREA, CONF_FORCE_INVERT,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 SEGMENT_MAP = {
-    # a,b,c,d,e,f,g (top, ur, lr, bottom, ll, ul, mid) -> digit
     (1,1,1,1,1,1,0): "0",
     (0,1,1,0,0,0,0): "1",
     (1,1,0,1,1,0,1): "2",
@@ -40,97 +40,107 @@ SEGMENT_MAP = {
     (1,1,1,1,0,1,1): "9",
 }
 
-def _clamp(v, lo, hi):
+def _clamp(v: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, v))
 
-def despeckle(binary: np.ndarray, min_area: int, foreground_val: int = 0) -> np.ndarray:
-    if min_area <= 0:
-        return binary
-    mask = (binary == foreground_val).astype(np.uint8)
-    num, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    out = binary.copy()
-    for i in range(1, num):
-        area = int(stats[i, cv2.CC_STAT_AREA])
-        if area < min_area:
-            out[labels == i] = 255 - foreground_val
-    return out
-
-def preprocess(
-    bgr: np.ndarray,
-    crop: tuple[int,int,int,int],
-    rotate: int,
-    clahe_clip: float,
-    clahe_tile: int,
-    blur: int,
-    adapt_method: str,
-    block_size: int,
-    c_value: int,
-    border_clear: int,
-    min_area: int,
-    force_invert: bool,
-):
-    h_img, w_img = bgr.shape[:2]
-    x,y,w,h = crop
-    x = _clamp(int(x), 0, w_img-1)
-    y = _clamp(int(y), 0, h_img-1)
-    w = _clamp(int(w) if w>0 else w_img-x, 1, w_img-x)
-    h = _clamp(int(h) if h>0 else h_img-y, 1, h_img-y)
-
-    roi = bgr[y:y+h, x:x+w].copy()
-
+def _rotate_pil(im: Image.Image, rotate: int) -> Image.Image:
     r = int(rotate) % 360
     if r == 90:
-        roi = cv2.rotate(roi, cv2.ROTATE_90_CLOCKWISE)
-    elif r == 180:
-        roi = cv2.rotate(roi, cv2.ROTATE_180)
-    elif r == 270:
-        roi = cv2.rotate(roi, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        return im.transpose(Image.ROTATE_270)  # CW 90
+    if r == 180:
+        return im.transpose(Image.ROTATE_180)
+    if r == 270:
+        return im.transpose(Image.ROTATE_90)   # CW 270
+    return im
 
-    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+def adaptive_threshold_mean(gray: np.ndarray, block: int, c: int) -> np.ndarray:
+    """Adaptive mean threshold using integral image. Output 0/255 (black/white)."""
+    h, w = gray.shape
+    block = _clamp(int(block), 3, 199)
+    if block % 2 == 0:
+        block += 1
+    r = block // 2
 
-    clahe_tile = _clamp(int(clahe_tile), 2, 64)
-    clahe_clip = float(max(0.1, min(10.0, float(clahe_clip))))
-    clahe = cv2.createCLAHE(clipLimit=clahe_clip, tileGridSize=(clahe_tile, clahe_tile))
-    gray2 = clahe.apply(gray)
+    padded = np.pad(gray.astype(np.uint32), ((1,1),(1,1)), mode="edge")
+    ii = padded.cumsum(axis=0).cumsum(axis=1)
 
-    blur = _clamp(int(blur), 0, 31)
-    if blur != 0 and blur % 2 == 0:
-        blur += 1
-    if blur >= 3:
-        gray2 = cv2.GaussianBlur(gray2, (blur, blur), 0)
+    y = np.arange(h)
+    x = np.arange(w)
+    y1 = np.clip(y - r, 0, h-1) + 1
+    y2 = np.clip(y + r, 0, h-1) + 1
+    x1 = np.clip(x - r, 0, w-1) + 1
+    x2 = np.clip(x + r, 0, w-1) + 1
 
-    block_size = _clamp(int(block_size), 3, 99)
-    if block_size % 2 == 0:
-        block_size += 1
-    c_value = _clamp(int(c_value), -50, 50)
+    A = ii[y1[:,None]-1, x1[None,:]-1]
+    B = ii[y1[:,None]-1, x2[None,:]]
+    C = ii[y2[:,None], x1[None,:]-1]
+    D = ii[y2[:,None], x2[None,:]]
 
-    method = cv2.ADAPTIVE_THRESH_GAUSSIAN_C if adapt_method == "gaussian" else cv2.ADAPTIVE_THRESH_MEAN_C
-    bin_img = cv2.adaptiveThreshold(gray2, 255, method, cv2.THRESH_BINARY, block_size, c_value)
+    area = (y2 - y1 + 1)[:,None] * (x2 - x1 + 1)[None,:]
+    mean = (D - B - C + A) / area
 
-    # normalize to white background
+    thresh = mean.astype(np.int32) - int(c)
+    fg = gray.astype(np.int32) < thresh
+    return np.where(fg, 0, 255).astype(np.uint8)
+
+def normalize_polarity(bin_img: np.ndarray, force_invert: bool) -> np.ndarray:
+    # prefer white background
     if float(bin_img.mean()) < 127:
-        bin_img = cv2.bitwise_not(bin_img)
-
+        bin_img = 255 - bin_img
     if force_invert:
-        bin_img = cv2.bitwise_not(bin_img)
+        bin_img = 255 - bin_img
+    return bin_img
 
-    border_clear = _clamp(int(border_clear), 0, 30)
-    if border_clear > 0:
-        bin_img[:border_clear, :] = 255
-        bin_img[-border_clear:, :] = 255
-        bin_img[:, :border_clear] = 255
-        bin_img[:, -border_clear:] = 255
+def clear_border(bin_img: np.ndarray, px: int) -> np.ndarray:
+    px = _clamp(int(px), 0, 50)
+    if px <= 0:
+        return bin_img
+    out = bin_img.copy()
+    out[:px,:] = 255
+    out[-px:,:] = 255
+    out[:,:px] = 255
+    out[:,-px:] = 255
+    return out
 
-    min_area = _clamp(int(min_area), 0, 5000)
-    bin_img = despeckle(bin_img, min_area=min_area, foreground_val=0)
+def despeckle(bin_img: np.ndarray, min_area: int) -> np.ndarray:
+    """Remove small black components using BFS (8-neighborhood)."""
+    min_area = _clamp(int(min_area), 0, 1000000)
+    if min_area <= 0:
+        return bin_img
 
-    return bin_img, {"x":x,"y":y,"w":w,"h":h,"rotate":r}
+    h, w = bin_img.shape
+    fg = (bin_img == 0)
+    visited = np.zeros((h,w), dtype=bool)
+    out = bin_img.copy()
 
-def find_digit_boxes(bin_img: np.ndarray):
-    # bin_img: 0 digits, 255 bg
-    h, w = bin_img.shape[:2]
-    col_has_fg = (bin_img == 0).any(axis=0).astype(np.uint8)
-    boxes = []
+    neigh = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
+
+    for y0 in range(h):
+        xs = np.where(fg[y0] & ~visited[y0])[0]
+        for x0 in xs:
+            if visited[y0, x0]:
+                continue
+            q: Deque[Tuple[int,int]] = deque()
+            q.append((y0, x0))
+            visited[y0, x0] = True
+            comp = [(y0, x0)]
+            while q:
+                y, x = q.popleft()
+                for dy, dx in neigh:
+                    ny, nx = y+dy, x+dx
+                    if 0 <= ny < h and 0 <= nx < w and fg[ny, nx] and not visited[ny, nx]:
+                        visited[ny, nx] = True
+                        q.append((ny, nx))
+                        comp.append((ny, nx))
+            if len(comp) < min_area:
+                for yy, xx in comp:
+                    out[yy, xx] = 255
+    return out
+
+def find_digit_boxes(bin_img: np.ndarray) -> List[Tuple[int,int,int,int]]:
+    h, w = bin_img.shape
+    col_has_fg = (bin_img == 0).any(axis=0)
+    boxes_x = []
     in_run = False
     start = 0
     for x in range(w):
@@ -140,16 +150,15 @@ def find_digit_boxes(bin_img: np.ndarray):
         elif not col_has_fg[x] and in_run:
             end = x-1
             if end - start >= 5:
-                boxes.append((start, end))
+                boxes_x.append((start, end))
             in_run = False
     if in_run:
         end = w-1
         if end - start >= 5:
-            boxes.append((start, end))
+            boxes_x.append((start, end))
 
-    # For each x-run, find y bounds
     out = []
-    for (x1, x2) in boxes:
+    for x1, x2 in boxes_x:
         region = bin_img[:, x1:x2+1]
         rows = (region == 0).any(axis=1)
         ys = np.where(rows)[0]
@@ -160,13 +169,10 @@ def find_digit_boxes(bin_img: np.ndarray):
     return out
 
 def classify_digit(bin_digit: np.ndarray):
-    # expects white bg 255 and black segments 0
-    h, w = bin_digit.shape[:2]
+    h, w = bin_digit.shape
     if h < 10 or w < 6:
         return None, None
 
-    # Define segment ROIs (fractions tuned for typical 7-seg)
-    # a(top), b(ur), c(lr), d(bottom), e(ll), f(ul), g(mid)
     def roi(xa, ya, xb, yb):
         x1 = int(_clamp(round(xa*w), 0, w-1))
         x2 = int(_clamp(round(xb*w), 0, w-1))
@@ -188,9 +194,8 @@ def classify_digit(bin_digit: np.ndarray):
 
     def on(seg):
         r = seg_rois[seg]
-        # percent of black pixels
         ratio = float(np.mean(r == 0))
-        return 1 if ratio > 0.18 else 0, ratio
+        return (1 if ratio > 0.18 else 0), ratio
 
     bits = []
     ratios = {}
@@ -198,10 +203,11 @@ def classify_digit(bin_digit: np.ndarray):
         b, r = on(seg)
         bits.append(b)
         ratios[seg] = r
+
     key = tuple(bits)
     return SEGMENT_MAP.get(key), {"bits": key, "ratios": ratios}
 
-def ocr_sevenseg(bin_img: np.ndarray, expected_digits: int | None = None):
+def ocr_sevenseg(bin_img: np.ndarray, expected_digits: Optional[int]):
     boxes = find_digit_boxes(bin_img)
     digits = []
     seginfo = []
@@ -219,72 +225,63 @@ def ocr_sevenseg(bin_img: np.ndarray, expected_digits: int | None = None):
     ok = True
     if expected_digits is not None and expected_digits > 0 and len(digits) != expected_digits:
         ok = False
-    return {
-        "value": value,
-        "digits": digits,
-        "boxes": used_boxes,
-        "segments": seginfo,
-        "ok": ok,
-        "found": len(digits),
-    }
-
+    return {"value": value, "digits": digits, "boxes": used_boxes, "segments": seginfo, "ok": ok, "found": len(digits)}
 
 class SevenSegCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self.entry = entry
         self.camera_entity = entry.data[CONF_CAMERA]
         interval = int(entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=f"{DOMAIN}:{entry.entry_id}",
-            update_interval=timedelta(seconds=interval),
-        )
+        super().__init__(hass, _LOGGER, name=f"{DOMAIN}:{entry.entry_id}", update_interval=timedelta(seconds=interval))
 
     async def _async_update_data(self):
         try:
             image = await async_get_image(self.hass, self.camera_entity)
             if image is None:
                 raise UpdateFailed("Keine Kamera-Bilddaten erhalten")
-            content = image.content
-            arr = np.frombuffer(content, dtype=np.uint8)
-            bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-            if bgr is None:
-                raise UpdateFailed("OpenCV konnte das Bild nicht dekodieren")
 
-            crop = (
-                int(self.entry.data.get(CONF_CROP_X, 0)),
-                int(self.entry.data.get(CONF_CROP_Y, 0)),
-                int(self.entry.data.get(CONF_CROP_W, 0)),
-                int(self.entry.data.get(CONF_CROP_H, 0)),
-            )
+            im = Image.open(BytesIO(image.content)).convert("RGB")
+
+            # Crop
+            w_img, h_img = im.size
+            x = int(self.entry.data.get(CONF_CROP_X, 0))
+            y = int(self.entry.data.get(CONF_CROP_Y, 0))
+            w = int(self.entry.data.get(CONF_CROP_W, 0))
+            h = int(self.entry.data.get(CONF_CROP_H, 0))
+            x = _clamp(x, 0, w_img-1)
+            y = _clamp(y, 0, h_img-1)
+            w = _clamp(w if w > 0 else w_img-x, 1, w_img-x)
+            h = _clamp(h if h > 0 else h_img-y, 1, h_img-y)
+
+            im = im.crop((x, y, x+w, y+h))
             rotate = int(self.entry.data.get(CONF_ROTATE, 0))
-            bin_img, crop_meta = preprocess(
-                bgr=bgr,
-                crop=crop,
-                rotate=rotate,
-                clahe_clip=float(self.entry.data.get(CONF_CLAHE_CLIP, 2.0)),
-                clahe_tile=int(self.entry.data.get(CONF_CLAHE_TILE, 8)),
-                blur=int(self.entry.data.get(CONF_BLUR, 5)),
-                adapt_method=str(self.entry.data.get(CONF_ADAPT_METHOD, "gaussian")),
-                block_size=int(self.entry.data.get(CONF_BLOCK_SIZE, 41)),
-                c_value=int(self.entry.data.get(CONF_C, 5)),
-                border_clear=int(self.entry.data.get(CONF_BORDER_CLEAR, 10)),
-                min_area=int(self.entry.data.get(CONF_MIN_AREA, 30)),
-                force_invert=bool(self.entry.data.get(CONF_FORCE_INVERT, False)),
-            )
+            im = _rotate_pil(im, rotate)
+
+            gray = im.convert("L")
+            if bool(self.entry.data.get(CONF_AUTOCONTRAST, True)):
+                gray = ImageOps.autocontrast(gray)
+
+            blur_sigma = float(self.entry.data.get(CONF_BLUR, 1.2))
+            if blur_sigma > 0:
+                gray = gray.filter(ImageFilter.GaussianBlur(radius=blur_sigma))
+
+            arr = np.array(gray, dtype=np.uint8)
+            block = int(self.entry.data.get(CONF_BLOCK_SIZE, 41))
+            c_val = int(self.entry.data.get(CONF_C, 5))
+
+            bin_img = adaptive_threshold_mean(arr, block=block, c=c_val)
+            bin_img = normalize_polarity(bin_img, force_invert=bool(self.entry.data.get(CONF_FORCE_INVERT, False)))
+            bin_img = clear_border(bin_img, px=int(self.entry.data.get(CONF_BORDER_CLEAR, 10)))
+            bin_img = despeckle(bin_img, min_area=int(self.entry.data.get(CONF_MIN_AREA, 30)))
 
             expected = int(self.entry.data.get(CONF_EXPECTED_DIGITS, 0)) or None
             res = ocr_sevenseg(bin_img, expected_digits=expected)
-
-            res["crop"] = crop_meta
+            res["crop"] = {"x": x, "y": y, "w": w, "h": h, "rotate": rotate}
             res["preprocess"] = {
-                "clahe_clip": float(self.entry.data.get(CONF_CLAHE_CLIP, 2.0)),
-                "clahe_tile": int(self.entry.data.get(CONF_CLAHE_TILE, 8)),
-                "blur": int(self.entry.data.get(CONF_BLUR, 5)),
-                "adapt_method": str(self.entry.data.get(CONF_ADAPT_METHOD, "gaussian")),
-                "block_size": int(self.entry.data.get(CONF_BLOCK_SIZE, 41)),
-                "c": int(self.entry.data.get(CONF_C, 5)),
+                "autocontrast": bool(self.entry.data.get(CONF_AUTOCONTRAST, True)),
+                "blur_sigma": blur_sigma,
+                "block_size": block,
+                "c": c_val,
                 "border_clear": int(self.entry.data.get(CONF_BORDER_CLEAR, 10)),
                 "min_area": int(self.entry.data.get(CONF_MIN_AREA, 30)),
                 "force_invert": bool(self.entry.data.get(CONF_FORCE_INVERT, False)),
@@ -292,7 +289,6 @@ class SevenSegCoordinator(DataUpdateCoordinator):
             return res
         except Exception as err:
             raise UpdateFailed(str(err)) from err
-
 
 class SevenSegSensor(Entity):
     _attr_has_entity_name = True
@@ -332,7 +328,6 @@ class SevenSegSensor(Entity):
 
     async def async_update(self) -> None:
         await self.coordinator.async_request_refresh()
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     coordinator = SevenSegCoordinator(hass, entry)

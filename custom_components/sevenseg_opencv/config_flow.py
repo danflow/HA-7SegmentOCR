@@ -14,15 +14,13 @@ from .const import (
     CONF_ROTATE,
     CONF_EXPECTED_DIGITS,
     CONF_SCAN_INTERVAL,
-    CONF_CLAHE_CLIP, CONF_CLAHE_TILE, CONF_BLUR,
-    CONF_ADAPT_METHOD, CONF_BLOCK_SIZE, CONF_C,
+    CONF_AUTOCONTRAST, CONF_BLUR, CONF_BLOCK_SIZE, CONF_C,
     CONF_BORDER_CLEAR, CONF_MIN_AREA, CONF_FORCE_INVERT,
 )
 
-ADAPT_METHODS = ["gaussian", "mean"]
 ROTATE_OPTIONS = [0, 90, 180, 270]
 
-class SevenSegOpenCVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
@@ -44,11 +42,8 @@ class SevenSegOpenCVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_CROP_H, default=0): vol.Coerce(int),
             vol.Optional(CONF_ROTATE, default=0): vol.In(ROTATE_OPTIONS),
 
-            # Preprocess defaults tuned to your working settings
-            vol.Optional(CONF_CLAHE_CLIP, default=2.0): vol.Coerce(float),
-            vol.Optional(CONF_CLAHE_TILE, default=8): vol.Coerce(int),
-            vol.Optional(CONF_BLUR, default=5): vol.Coerce(int),
-            vol.Optional(CONF_ADAPT_METHOD, default="gaussian"): vol.In(ADAPT_METHODS),
+            vol.Optional(CONF_AUTOCONTRAST, default=True): bool,
+            vol.Optional(CONF_BLUR, default=1.2): vol.Coerce(float),
             vol.Optional(CONF_BLOCK_SIZE, default=41): vol.Coerce(int),
             vol.Optional(CONF_C, default=5): vol.Coerce(int),
             vol.Optional(CONF_BORDER_CLEAR, default=10): vol.Coerce(int),
@@ -56,6 +51,3 @@ class SevenSegOpenCVConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_FORCE_INVERT, default=False): bool,
         })
         return self.async_show_form(step_id="user", data_schema=schema)
-
-    async def async_step_options(self, user_input=None):
-        return await self.async_step_user(user_input)

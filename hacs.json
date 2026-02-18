@@ -1,5 +1,5 @@
 {
-  "name": "Seven Segment OCR (OpenCV)",
+  "name": "Seven Segment OCR (Pure Python)",
   "content_in_root": false,
   "render_readme": true,
   "zip_release": false
