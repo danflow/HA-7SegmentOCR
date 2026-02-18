@@ -235,10 +235,15 @@ class SevenSegCoordinator(DataUpdateCoordinator):
         super().__init__(hass, _LOGGER, name=f"{DOMAIN}:{entry.entry_id}", update_interval=timedelta(seconds=interval))
 
     async def _async_update_data(self):
+async def _async_update_data(self):
+        # Cache last known good result so the sensor keeps a value even if the camera stream flakes out.
+        cache = self.hass.data.setdefault(DOMAIN, {}).setdefault(self.entry.entry_id, {})
+        last_good = cache.get("last")
+
         try:
             image = await async_get_image(self.hass, self.camera_entity)
             if image is None:
-                raise UpdateFailed("Keine Kamera-Bilddaten erhalten")
+                raise UpdateFailed("Unable to get image (None)")
 
             im = Image.open(BytesIO(image.content)).convert("RGB")
 
@@ -286,8 +291,22 @@ class SevenSegCoordinator(DataUpdateCoordinator):
                 "min_area": int(self.entry.data.get(CONF_MIN_AREA, 30)),
                 "force_invert": bool(self.entry.data.get(CONF_FORCE_INVERT, False)),
             }
+            res["image_error"] = None
+
+            # cache good result
+            cache["last"] = res
             return res
+
         except Exception as err:
+            _LOGGER.error("Error fetching %s data: %s", self.name, err)
+
+            if last_good:
+                # Return cached value but mark error; this keeps the entity visible and the last value usable.
+                cached = dict(last_good)
+                cached["image_error"] = str(err)
+                cached["ok"] = False
+                return cached
+
             raise UpdateFailed(str(err)) from err
 
 class SevenSegSensor(Entity):
@@ -302,7 +321,9 @@ class SevenSegSensor(Entity):
 
     @property
     def available(self) -> bool:
-        return self.coordinator.last_update_success
+        # Keep entity available if we have a cached value.
+        data = self.coordinator.data or {}
+        return self.coordinator.last_update_success or bool(data.get('value'))
 
     @property
     def state(self):

@@ -17,3 +17,20 @@ scheitert `opencv-python-headless` (keine Wheels → Build-from-source → Toolc
 
 ## Lizenz
 MIT
+
+
+## Kalibrierung (Crop & Parameter)
+Home Assistant Config Flows können **kein** interaktives Crop-Rechteck auf einem Kamera-Snapshot anbieten.
+Empfehlung:
+1. Nutze die Web-UI (dein vorheriges Projekt), um Crop & Preprocess zu finden.
+2. Kopiere die Werte und trage sie im Options-Dialog dieser Integration ein.
+Optional (v0.2.1): Du kannst im Options-Dialog auch ein JSON-Preset einfügen (siehe unten).
+
+
+## Last-known-value (Kamera-Aussetzer)
+Wenn die Kamera/der MJPEG-Stream kurz ausfällt, behält der Sensor den **letzten gültigen Wert**.
+Im Attribut `image_error` siehst du dann den Grund (z.B. Timeout).
+
+
+## HACS Icon
+Im Repo liegen `icon.png` und `logo.png`, damit HACS ein hübsches Icon anzeigen kann.

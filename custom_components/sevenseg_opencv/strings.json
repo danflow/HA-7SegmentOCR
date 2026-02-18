@@ -3,7 +3,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Seven Segment OCR (Pure Python)",
+        "title": "Seven Segment OCR",
         "description": "W\u00e4hle die Kamera und gib Crop/Vorverarbeitung-Parameter an.",
         "data": {
           "camera_entity": "Kamera",
@@ -20,8 +20,21 @@
           "c": "C (Offset)",
           "border_clear": "Border Clear (px)",
           "min_area": "Min Area (Despeckle)",
-          "force_invert": "Force Invert"
+          "force_invert": "Force Invert",
+          "preset_json": "JSON-Preset (optional)"
         }
+      },
+      "crop": {
+        "title": "Crop",
+        "description": "Crop/Rotation konfigurieren."
+      },
+      "preprocess": {
+        "title": "Vorverarbeitung",
+        "description": "Binarisierung/Noise-Entfernung."
+      },
+      "import": {
+        "title": "Preset (optional)",
+        "description": "Optional JSON-Preset einf\u00fcgen."
       }
     }
   }
