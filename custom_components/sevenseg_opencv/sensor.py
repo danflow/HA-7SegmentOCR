@@ -333,32 +333,32 @@ class SevenSegCoordinator(DataUpdateCoordinator):
                         expected = int(self.entry.data.get(CONF_EXPECTED_DIGITS, 0)) or None
 
                         res = ocr_sevenseg(bin_img, expected_digits=expected)
-            # Output type + monotonic guard
-            output_type = str(self.entry.data.get(CONF_OUTPUT_TYPE, DEFAULT_OUTPUT_TYPE))
-            allow_decrease = bool(self.entry.data.get(CONF_ALLOW_DECREASE, DEFAULT_ALLOW_DECREASE))
-            parsed, raw = _parse_value(str(res.get('value','')), output_type)
-            res['raw_ocr'] = raw
-            res['output_type'] = output_type
-            # If numeric, enforce monotonic unless explicitly allowed
-            if output_type in ('int','float') and (self._last_value is not None) and (not allow_decrease):
-                try:
-                    last_num = float(self._last_value)
-                    new_num = float(parsed)
-                    if new_num < last_num:
-                        return {
-                            'value': self._last_value,
-                            'last_update_success': False,
-                            'last_error': 'decrease_detected',
-                            'rejected_reason': 'decrease_detected',
-                            'last_success': self._last_success,
-                            'raw_ocr': raw,
-                            'output_type': output_type,
-                            'allow_decrease': allow_decrease,
-                        }
-                except Exception:
-                    pass
-            res['value'] = parsed
-            res['allow_decrease'] = allow_decrease
+                        # Output type + monotonic guard
+                        output_type = str(self.entry.data.get(CONF_OUTPUT_TYPE, DEFAULT_OUTPUT_TYPE))
+                        allow_decrease = bool(self.entry.data.get(CONF_ALLOW_DECREASE, DEFAULT_ALLOW_DECREASE))
+                        parsed, raw = _parse_value(str(res.get('value','')), output_type)
+                        res['raw_ocr'] = raw
+                        res['output_type'] = output_type
+                        # If numeric, enforce monotonic unless explicitly allowed
+                        if output_type in ('int','float') and (self._last_value is not None) and (not allow_decrease):
+                            try:
+                                last_num = float(self._last_value)
+                                new_num = float(parsed)
+                                if new_num < last_num:
+                                    return {
+                                        'value': self._last_value,
+                                        'last_update_success': False,
+                                        'last_error': 'decrease_detected',
+                                        'rejected_reason': 'decrease_detected',
+                                        'last_success': self._last_success,
+                                        'raw_ocr': raw,
+                                        'output_type': output_type,
+                                        'allow_decrease': allow_decrease,
+                                    }
+                            except Exception:
+                                pass
+                        res['value'] = parsed
+                        res['allow_decrease'] = allow_decrease
 
                         res["crop"] = {"x": x, "y": y, "w": w, "h": h, "rotate": rotate}
 
