@@ -87,7 +87,7 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_CROP_Y, default=0): _num(0, 5000, step=1),
             vol.Optional(CONF_CROP_W, default=0): _num(0, 5000, step=1),
             vol.Optional(CONF_CROP_H, default=0): _num(0, 5000, step=1),
-            vol.Optional(CONF_ROTATE, default=0): selector.SelectSelector(
+            vol.Optional(CONF_ROTATE, default="0"): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=[str(x) for x in ROTATE_OPTIONS], mode=selector.SelectSelectorMode.DROPDOWN)
             ),
         })
@@ -120,7 +120,7 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data = dict(self._data)
 
             # convert rotate select back to int if needed
-            if isinstance(data.get(CONF_ROTATE), str) and data[CONF_ROTATE].isdigit():
+            if isinstance(data.get(CONF_ROTATE), str) and str(data[CONF_ROTATE]).isdigit():
                 data[CONF_ROTATE] = int(data[CONF_ROTATE])
 
             data = _merge_preset(data, preset_json)
@@ -149,6 +149,9 @@ class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             preset_json = user_input.pop(CONF_PRESET_JSON, "")
             self._data.update(user_input)
+            # Rotate comes from selector as string
+            if isinstance(self._data.get(CONF_ROTATE), str) and str(self._data[CONF_ROTATE]).isdigit():
+                self._data[CONF_ROTATE] = int(self._data[CONF_ROTATE])
             self._data = _merge_preset(self._data, preset_json)
             return self.async_create_entry(title="", data=self._data)
 
@@ -161,7 +164,7 @@ class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_CROP_Y, default=d.get(CONF_CROP_Y, 0)): _num(0, 5000, step=1),
             vol.Optional(CONF_CROP_W, default=d.get(CONF_CROP_W, 0)): _num(0, 5000, step=1),
             vol.Optional(CONF_CROP_H, default=d.get(CONF_CROP_H, 0)): _num(0, 5000, step=1),
-            vol.Optional(CONF_ROTATE, default=int(d.get(CONF_ROTATE, 0))): selector.SelectSelector(
+            vol.Optional(CONF_ROTATE, default=str(int(d.get(CONF_ROTATE, 0)))): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=[str(x) for x in ROTATE_OPTIONS], mode=selector.SelectSelectorMode.DROPDOWN)
             ),
 
