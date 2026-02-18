@@ -235,7 +235,6 @@ class SevenSegCoordinator(DataUpdateCoordinator):
         super().__init__(hass, _LOGGER, name=f"{DOMAIN}:{entry.entry_id}", update_interval=timedelta(seconds=interval))
 
     async def _async_update_data(self):
-async def _async_update_data(self):
         # Cache last known good result so the sensor keeps a value even if the camera stream flakes out.
         cache = self.hass.data.setdefault(DOMAIN, {}).setdefault(self.entry.entry_id, {})
         last_good = cache.get("last")
