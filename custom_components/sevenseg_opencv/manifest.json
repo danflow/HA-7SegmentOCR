@@ -6,11 +6,9 @@
   "codeowners": [
     "@yourgithub"
   ],
-  "version": "0.1.0",
+  "version": "0.1.1",
   "config_flow": true,
   "requirements": [
-    "opencv-python-headless==4.10.0.84",
-    "numpy==2.2.2",
-    "pillow==11.1.0"
+    "opencv-python-headless>=4.8.0.0"
   ]
 }

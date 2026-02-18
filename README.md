@@ -26,3 +26,7 @@ Im Sensor findest du Attribute wie:
 
 ## Lizenz
 MIT
+
+
+## Hinweis zu Requirements
+Home Assistant installiert Requirements in einer eigenen Python-Umgebung. Gepinnte Versionen können scheitern, wenn es für deine Python-Version/Architektur keine Wheels gibt. Diese Version pinned daher nur noch `opencv-python-headless` und nutzt das in HA vorhandene `numpy`.
