@@ -6,7 +6,7 @@
   "codeowners": [
     "@yourgithub"
   ],
-  "version": "0.2.7",
+  "version": "0.2.9",
   "config_flow": true,
   "requirements": []
 }

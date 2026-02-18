@@ -21,7 +21,9 @@
           "c": "C",
           "border_clear": "Border Clear",
           "min_area": "Min Area",
-          "force_invert": "Force Invert"
+          "force_invert": "Force Invert",
+          "output_type": "Ausgabe-Datentyp (string/int/float)",
+          "allow_decrease": "Kleinere Werte als der letzte erlauben"
         }
       }
     }
