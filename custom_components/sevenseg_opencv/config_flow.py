@@ -87,6 +87,8 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_BORDER_CLEAR, default=10): vol.Coerce(int),
             vol.Optional(CONF_MIN_AREA, default=30): vol.Coerce(int),
             vol.Optional(CONF_FORCE_INVERT, default=False): bool,
+            vol.Optional(CONF_OUTPUT_TYPE, default=DEFAULT_OUTPUT_TYPE): vol.In(["string","int","float"]),
+            vol.Optional(CONF_ALLOW_DECREASE, default=DEFAULT_ALLOW_DECREASE): bool,
         })
         return self.async_show_form(step_id="user", data_schema=schema)
 
@@ -134,5 +136,7 @@ class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_BORDER_CLEAR, default=int(d.get(CONF_BORDER_CLEAR, 10))): vol.Coerce(int),
             vol.Optional(CONF_MIN_AREA, default=int(d.get(CONF_MIN_AREA, 30))): vol.Coerce(int),
             vol.Optional(CONF_FORCE_INVERT, default=bool(d.get(CONF_FORCE_INVERT, False))): bool,
+            vol.Optional(CONF_OUTPUT_TYPE, default=d.get(CONF_OUTPUT_TYPE, DEFAULT_OUTPUT_TYPE)): vol.In(["string","int","float"]),
+            vol.Optional(CONF_ALLOW_DECREASE, default=bool(d.get(CONF_ALLOW_DECREASE, DEFAULT_ALLOW_DECREASE))): bool,
         })
         return self.async_show_form(step_id="init", data_schema=schema)

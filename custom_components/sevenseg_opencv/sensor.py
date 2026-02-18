@@ -42,6 +42,18 @@ SEGMENT_MAP = {
     (1,1,1,1,0,1,1): "9",
 }
 
+def _conf(entry, key, default=None):
+    # Options override data
+    try:
+        if entry.options and key in entry.options:
+            return entry.options.get(key)
+    except Exception:
+        pass
+    try:
+        return _conf(entry, key, default)
+    except Exception:
+        return default
+
 def _clamp(v: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, v))
 
@@ -241,7 +253,7 @@ class SevenSegCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self.entry = entry
         self.camera_entity = entry.data[CONF_CAMERA]
-        interval = int(entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
+        interval = int(_conf(entry, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
         super().__init__(hass, _LOGGER, name=f"{DOMAIN}:{entry.entry_id}", update_interval=timedelta(seconds=interval))
 
     async def _async_update_data(self):
@@ -258,42 +270,42 @@ class SevenSegCoordinator(DataUpdateCoordinator):
 
             # Crop
             w_img, h_img = im.size
-            x = int(self.entry.data.get(CONF_CROP_X, 0))
-            y = int(self.entry.data.get(CONF_CROP_Y, 0))
-            w = int(self.entry.data.get(CONF_CROP_W, 0))
-            h = int(self.entry.data.get(CONF_CROP_H, 0))
+            x = int(_conf(self.entry, CONF_CROP_X, 0))
+            y = int(_conf(self.entry, CONF_CROP_Y, 0))
+            w = int(_conf(self.entry, CONF_CROP_W, 0))
+            h = int(_conf(self.entry, CONF_CROP_H, 0))
             x = _clamp(x, 0, w_img-1)
             y = _clamp(y, 0, h_img-1)
             w = _clamp(w if w > 0 else w_img-x, 1, w_img-x)
             h = _clamp(h if h > 0 else h_img-y, 1, h_img-y)
 
             im = im.crop((x, y, x+w, y+h))
-            rotate = int(self.entry.data.get(CONF_ROTATE, 0))
+            rotate = int(_conf(self.entry, CONF_ROTATE, 0))
             im = _rotate_pil(im, rotate)
 
             gray = im.convert("L")
-            if bool(self.entry.data.get(CONF_AUTOCONTRAST, True)):
+            if bool(_conf(self.entry, CONF_AUTOCONTRAST, True)):
                 gray = ImageOps.autocontrast(gray)
 
-            blur_sigma = float(self.entry.data.get(CONF_BLUR, 1.2))
+            blur_sigma = float(_conf(self.entry, CONF_BLUR, 1.2))
             if blur_sigma > 0:
                 gray = gray.filter(ImageFilter.GaussianBlur(radius=blur_sigma))
 
             arr = np.array(gray, dtype=np.uint8)
-            block = int(self.entry.data.get(CONF_BLOCK_SIZE, 41))
-            c_val = int(self.entry.data.get(CONF_C, 5))
+            block = int(_conf(self.entry, CONF_BLOCK_SIZE, 41))
+            c_val = int(_conf(self.entry, CONF_C, 5))
 
             bin_img = adaptive_threshold_mean(arr, block=block, c=c_val)
-            bin_img = normalize_polarity(bin_img, force_invert=bool(self.entry.data.get(CONF_FORCE_INVERT, False)))
-            bin_img = clear_border(bin_img, px=int(self.entry.data.get(CONF_BORDER_CLEAR, 10)))
-            bin_img = despeckle(bin_img, min_area=int(self.entry.data.get(CONF_MIN_AREA, 30)))
+            bin_img = normalize_polarity(bin_img, force_invert=bool(_conf(self.entry, CONF_FORCE_INVERT, False)))
+            bin_img = clear_border(bin_img, px=int(_conf(self.entry, CONF_BORDER_CLEAR, 10)))
+            bin_img = despeckle(bin_img, min_area=int(_conf(self.entry, CONF_MIN_AREA, 30)))
 
-            expected = int(self.entry.data.get(CONF_EXPECTED_DIGITS, 0)) or None
+            expected = int(_conf(self.entry, CONF_EXPECTED_DIGITS, 0)) or None
             res = ocr_sevenseg(bin_img, expected_digits=expected)
 
             # Output type + monotonic guard (optional)
-            output_type = str(self.entry.data.get(CONF_OUTPUT_TYPE, DEFAULT_OUTPUT_TYPE))
-            allow_decrease = bool(self.entry.data.get(CONF_ALLOW_DECREASE, DEFAULT_ALLOW_DECREASE))
+            output_type = str(_conf(self.entry, CONF_OUTPUT_TYPE, DEFAULT_OUTPUT_TYPE))
+            allow_decrease = bool(_conf(self.entry, CONF_ALLOW_DECREASE, DEFAULT_ALLOW_DECREASE))
 
             parsed, raw_ocr = _parse_value(str(res.get("value", "")), output_type)
             res["raw_ocr"] = raw_ocr
@@ -324,13 +336,13 @@ class SevenSegCoordinator(DataUpdateCoordinator):
             res["last_success"] = dt_util.utcnow().isoformat()
             res["crop"] = {"x": x, "y": y, "w": w, "h": h, "rotate": rotate}
             res["preprocess"] = {
-                "autocontrast": bool(self.entry.data.get(CONF_AUTOCONTRAST, True)),
+                "autocontrast": bool(_conf(self.entry, CONF_AUTOCONTRAST, True)),
                 "blur_sigma": blur_sigma,
                 "block_size": block,
                 "c": c_val,
-                "border_clear": int(self.entry.data.get(CONF_BORDER_CLEAR, 10)),
-                "min_area": int(self.entry.data.get(CONF_MIN_AREA, 30)),
-                "force_invert": bool(self.entry.data.get(CONF_FORCE_INVERT, False)),
+                "border_clear": int(_conf(self.entry, CONF_BORDER_CLEAR, 10)),
+                "min_area": int(_conf(self.entry, CONF_MIN_AREA, 30)),
+                "force_invert": bool(_conf(self.entry, CONF_FORCE_INVERT, False)),
             }
             res["image_error"] = None
 
