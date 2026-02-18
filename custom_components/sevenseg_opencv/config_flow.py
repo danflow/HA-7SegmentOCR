@@ -93,7 +93,7 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry):
-        self.config_entry = config_entry
+        self._config_entry = config_entry
         self._data = dict(config_entry.data)
 
     async def async_step_init(self, user_input=None):
