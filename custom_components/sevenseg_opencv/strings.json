@@ -9,7 +9,7 @@
           "camera_entity": "Kamera Entity (z.B. camera.watermeter)",
           "scan_interval": "Intervall (Sekunden)",
           "expected_digits": "Erwartete Ziffern",
-          "preset_json": "JSON-Preset (optional)",
+          "preset_json": "Preset JSON (aus WebUI)",
           "crop_x": "Crop X",
           "crop_y": "Crop Y",
           "crop_w": "Crop W",
@@ -24,6 +24,21 @@
           "force_invert": "Force Invert",
           "output_type": "Ausgabe-Datentyp (string/int/float)",
           "allow_decrease": "Kleinere Werte als der letzte erlauben"
+        },
+        "data_description": {
+          "preset_json": "JSON aus dem Calibrator einfügen. Überschreibt die Felder darunter."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "preset_json": "Preset JSON (aus WebUI)"
+        },
+        "data_description": {
+          "preset_json": "JSON aus dem Calibrator einfügen. Überschreibt die Felder darunter."
         }
       }
     }

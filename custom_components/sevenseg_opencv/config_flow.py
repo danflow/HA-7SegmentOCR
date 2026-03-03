@@ -72,7 +72,7 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.Coerce(int),
             vol.Optional(CONF_EXPECTED_DIGITS, default=5): vol.Coerce(int),
 
-            vol.Optional(CONF_PRESET_JSON, default=""): str,
+            vol.Optional(CONF_PRESET_JSON, default=d.get(CONF_PRESET_JSON, "")): str,
 
             vol.Optional(CONF_CROP_X, default=0): vol.Coerce(int),
             vol.Optional(CONF_CROP_Y, default=0): vol.Coerce(int),
@@ -100,7 +100,9 @@ class SevenSegPureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry):
         self._config_entry = config_entry
-        self._data = dict(config_entry.data)
+        # Merge config + options; options win
+        self._defaults = {**dict(config_entry.data), **dict(config_entry.options)}
+
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
@@ -121,7 +123,7 @@ class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_SCAN_INTERVAL, default=d.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): vol.Coerce(int),
             vol.Optional(CONF_EXPECTED_DIGITS, default=d.get(CONF_EXPECTED_DIGITS, 5)): vol.Coerce(int),
 
-            vol.Optional(CONF_PRESET_JSON, default=""): str,
+            vol.Optional(CONF_PRESET_JSON, default=d.get(CONF_PRESET_JSON, "")): str,
 
             vol.Optional(CONF_CROP_X, default=d.get(CONF_CROP_X, 0)): vol.Coerce(int),
             vol.Optional(CONF_CROP_Y, default=d.get(CONF_CROP_Y, 0)): vol.Coerce(int),
