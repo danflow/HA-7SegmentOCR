@@ -106,7 +106,7 @@ class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
-            data = dict(self._data)
+            data = dict(self._defaults)
             data.update(user_input)
             data = _merge_preset(data, data.get(CONF_PRESET_JSON, ""))
 
@@ -118,7 +118,7 @@ class SevenSegPureOptionsFlow(config_entries.OptionsFlow):
             data.pop(CONF_PRESET_JSON, None)
             return self.async_create_entry(title="", data=data)
 
-        d = self._data
+        d = dict(self._defaults)
         schema = vol.Schema({
             vol.Optional(CONF_SCAN_INTERVAL, default=d.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): vol.Coerce(int),
             vol.Optional(CONF_EXPECTED_DIGITS, default=d.get(CONF_EXPECTED_DIGITS, 5)): vol.Coerce(int),
